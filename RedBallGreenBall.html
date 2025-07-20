@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chase Game with Bouncing Red Point</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #point {
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .greenPoint {
+            width: 50px;  /* Increased size */
+            height: 50px; /* Increased size */
+            border-radius: 50%;
+            position: absolute;
+            animation: blink 1s linear 0s infinite;  /* Make it blink for 1 second */
+        }
+
+        @keyframes blink {
+            0% {
+                background-color: yellow;
+            }
+            100% {
+                background-color: yellow;
+            }
+        }
+
+        #gameOverText {
+            position: absolute;
+            font-size: 48px;
+            font-weight: bold;
+            color: red;
+            opacity: 0;
+            transition: opacity 1s;
+        }
+
+        #levelDisplay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: black;
+        }
+
+        #shareButton {
+            position: absolute;
+            bottom: 20px;
+            font-size: 20px;
+            background-color: #1DA1F2; /* Twitter color */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #shareButton:hover {
+            background-color: #0d94d1;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="point"></div>
+    <div id="gameOverText">You Lose!</div>
+    <div id="levelDisplay">Level: 1</div>
+    <div id="shareButton">Share on Twitter</div>
+
+    <script>
+        const point = document.getElementById('point');
+        const gameOverText = document.getElementById('gameOverText');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const shareButton = document.getElementById('shareButton');
+
+        let xPos = window.innerWidth / 2;
+        let yPos = window.innerHeight / 2;
+        let xSpeed = 0;
+        let ySpeed = 0;
+        const acceleration = 0.5;  // Increased acceleration for more responsiveness
+        const maxSpeed = 8;
+        const friction = 0.97;  // Slightly less friction for more responsiveness
+        const bounceFactor = 0.9;
+
+        const greenPoints = [];
+        let numGreenPoints = 5;  // Start with 5 green points, will increase over time
+        let level = 1;  // Starting level
+
+        const redRadius = 10;  // Radius of the red point
+        const greenRadius = 25;  // Radius of the green points (increased)
+
+        let isMovingUp = false;
+        let isMovingDown = false;
+        let isMovingLeft = false;
+        let isMovingRight = false;
+
+        let lastKey = null;
+        let lastDirectionChange = Date.now();
+
+        let gameOverFlag = false;
+        let playerScore = 0;  // Track player's score (level)
+
+        // Create green points that chase the red point
+        function createGreenPoints() {
+            if (gameOverFlag) return;  // Prevent new green points from being created after game over
+            for (let i = 0; i < numGreenPoints; i++) {
+                const greenPoint = document.createElement('div');
+                greenPoint.classList.add('greenPoint');
+                document.body.appendChild(greenPoint);
+                greenPoints.push({
+                    element: greenPoint,
+                    xPos: Math.random() * window.innerWidth,
+                    yPos: Math.random() * window.innerHeight,
+                    speed: Math.random() * 2 + 1,
+                    active: false,  // Initially not active, they will blink first
+                    blinkStartTime: Date.now(),  // Track when blinking started
+                });
+            }
+        }
+
+        // Function to update the position of the red point
+        function updatePosition() {
+            let moveX = 0;
+            let moveY = 0;
+
+            if (isMovingUp) moveY -= acceleration;
+            if (isMovingDown) moveY += acceleration;
+            if (isMovingLeft) moveX -= acceleration;
+            if (isMovingRight) moveX += acceleration;
+
+            const currentTime = Date.now();
+            if (currentTime - lastDirectionChange < 200) {  // Quick direction change (within 200ms)
+                moveX *= 1.5;
+                moveY *= 1.5;
+            } else {
+                moveX *= 1;
+                moveY *= 1;
+            }
+
+            xSpeed += moveX;
+            ySpeed += moveY;
+
+            xSpeed = Math.max(-maxSpeed, Math.min(maxSpeed, xSpeed));
+            ySpeed = Math.max(-maxSpeed, Math.min(maxSpeed, ySpeed));
+
+            xPos += xSpeed;
+            yPos += ySpeed;
+
+            if (xPos <= 0) {
+                xPos = 0;
+                xSpeed = -xSpeed * bounceFactor;
+            } else if (xPos >= window.innerWidth - 20) {
+                xPos = window.innerWidth - 20;
+                xSpeed = -xSpeed * bounceFactor;
+            }
+
+            if (yPos <= 0) {
+                yPos = 0;
+                ySpeed = -ySpeed * bounceFactor;
+            } else if (yPos >= window.innerHeight - 20) {
+                yPos = window.innerHeight - 20;
+                ySpeed = -ySpeed * bounceFactor;
+            }
+
+            if (!isMovingUp && !isMovingDown) ySpeed *= friction;
+            if (!isMovingLeft && !isMovingRight) xSpeed *= friction;
+
+            point.style.left = `${xPos}px`;
+            point.style.top = `${yPos}px`;
+
+            greenPoints.forEach(greenPoint => {
+                const dx = xPos - greenPoint.xPos;
+                const dy = yPos - greenPoint.yPos;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const moveX = (dx / distance) * greenPoint.speed;
+                const moveY = (dy / distance) * greenPoint.speed;
+
+                greenPoint.xPos += moveX;
+                greenPoint.yPos += moveY;
+
+                greenPoint.element.style.left = `${greenPoint.xPos}px`;
+                greenPoint.element.style.top = `${greenPoint.yPos}px`;
+
+                if (!greenPoint.active && (Date.now() - greenPoint.blinkStartTime) >= 1000) {
+                    greenPoint.active = true;
+                    greenPoint.element.style.animation = 'none';
+                    greenPoint.element.style.backgroundColor = 'green';
+                }
+
+                if (greenPoint.active) {
+                    const overlapDistance = redRadius + greenRadius;
+                    if (distance < overlapDistance) {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        // Function to handle game over
+        function gameOver() {
+            if (gameOverFlag) return;
+            gameOverFlag = true;
+            gameOverText.style.opacity = 1;
+            playerScore = level; // Set player's score to current level
+            showShareButton(); // Show the share button when game is over
+        }
+
+        // Show share button with Twitter link
+        function showShareButton() {
+            const gameLink = "http://your-game-link.com";  // Replace with actual game link
+            const tweetText = `I just scored ${playerScore} in the Chase Game! Play it here: ${gameLink}`;
+            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+
+            shareButton.style.opacity = 1;
+            shareButton.onclick = function() {
+                window.open(twitterUrl, "_blank");
+            };
+        }
+
+        // Event listeners to start moving when key is pressed
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'w' || event.key === 'W') {
+                isMovingUp = true;
+                lastDirectionChange = Date.now();
+            }
+            if (event.key === 'a' || event.key === 'A') {
+                isMovingLeft = true;
+                lastDirectionChange = Date.now();
+            }
+            if (event.key === 's' || event.key === 'S') {
+                isMovingDown = true;
+                lastDirectionChange = Date.now();
+            }
+            if (event.key === 'd' || event.key === 'D') {
+                isMovingRight = true;
+                lastDirectionChange = Date.now();
+            }
+        });
+
+        // Event listeners to stop moving when key is released
+        document.addEventListener('keyup', function(event) {
+            if (event.key === 'w' || event.key === 'W') isMovingUp = false;
+            if (event.key === 'a' || event.key === 'A') isMovingLeft = false;
+            if (event.key === 's' || event.key === 'S') isMovingDown = false;
+            if (event.key === 'd' || event.key === 'D') isMovingRight = false;
+        });
+
+        // Function to increase difficulty and level up
+        function increaseDifficulty() {
+            if (gameOverFlag) return;
+            numGreenPoints += 1;
+            level += 1;  // Increment level when more enemies spawn
+            levelDisplay.textContent = `Level: ${level}`;  // Update the level display
+            createGreenPoints();
+        }
+
+        // Start the game loop
+        function gameLoop() {
+            if (!gameOverFlag) {
+                updatePosition();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Call increaseDifficulty every 10 seconds to make the game harder
+        setInterval(increaseDifficulty, 10000); // Adjust the time interval to your needs
+
+        // Start the first batch of green points and begin the game
+        createGreenPoints();
+        gameLoop();  // Begin the game loop
+
+    </script>
+
+</body>
+</html>
