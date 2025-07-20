@@ -60,6 +60,20 @@
             color: white;
         }
 
+        #instructions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 18px;
+            font-weight: normal;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+
         #shareButton {
             position: absolute;
             bottom: 20px;
@@ -84,6 +98,10 @@
     <div id="gameOverText">You Lose!</div>
     <div id="levelDisplay">Level: 1</div>
     <div id="shareButton">Share on Twitter</div>
+    <div id="instructions">
+        <p>Use WASD to move the red ball</p>
+        <p>Press F5 or refresh the page to restart the game</p>
+    </div>
 
     <script>
         const point = document.getElementById('point');
